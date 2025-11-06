@@ -7,6 +7,7 @@ import '../../../core/widgets/task_card.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../routes/app_routes.dart';
+import '../testing/task_list_debug_tests.dart';
 
 class TaskListScreen extends StatefulWidget {
   const TaskListScreen({super.key});
@@ -16,12 +17,31 @@ class TaskListScreen extends StatefulWidget {
 }
 
 class _TaskListScreenState extends State<TaskListScreen> {
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<TaskProvider>().loadTasks();
     });
+    _searchController.addListener(() {
+      if (_searchQuery != _searchController.text) {
+        setState(() {
+          _searchQuery = _searchController.text;
+        });
+      }
+    });
+    assert(() {
+      runTaskListDebugTests(context);
+      return true;
+    }());
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   @override
@@ -78,7 +98,25 @@ class _TaskListScreenState extends State<TaskListScreen> {
           }
 
           final tasks = taskProvider.tasks;
-          return tasks.isEmpty ? _buildEmptyState() : _buildTaskList(tasks);
+          if (tasks.isEmpty) {
+            return Column(
+              children: [
+                _buildSearchField(),
+                Expanded(child: _buildEmptyState()),
+              ],
+            );
+          }
+          final filtered = _filterTasks(tasks, _searchQuery);
+          return Column(
+            children: [
+              _buildSearchField(),
+              Expanded(
+                child: _searchQuery.isNotEmpty && filtered.isEmpty
+                    ? _buildSearchEmptyState(_searchQuery)
+                    : _buildTaskList(filtered),
+              ),
+            ],
+          );
         },
       ),
       floatingActionButton: FloatingActionButton.extended(
@@ -103,6 +141,73 @@ class _TaskListScreenState extends State<TaskListScreen> {
           Text(
             AppStrings.noTasks,
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  color:
+                      Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSearchField() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+      child: TextField(
+        controller: _searchController,
+        decoration: InputDecoration(
+          hintText: AppStrings.searchHint,
+          prefixIcon: const Icon(Icons.search),
+          suffixIcon: _searchQuery.isNotEmpty
+              ? IconButton(
+                  icon: const Icon(Icons.clear),
+                  onPressed: () {
+                    _searchController.clear();
+                    setState(() {
+                      _searchQuery = '';
+                    });
+                  },
+                )
+              : null,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          isDense: true,
+        ),
+      ),
+    );
+  }
+
+  List<TaskModel> _filterTasks(List<TaskModel> tasks, String query) {
+    if (query.isEmpty) return tasks;
+    final q = query.toLowerCase();
+    return tasks.where((t) => t.title.toLowerCase().contains(q)).toList();
+  }
+
+  Widget _buildSearchEmptyState(String query) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.search_off,
+            size: 80,
+            color: Theme.of(context).colorScheme.outline,
+          ),
+          const SizedBox(height: 12),
+          Text(
+            "${AppStrings.noSearchResults} '${query}'",
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  color:
+                      Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            AppStrings.tryAnotherKeyword,
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color:
                       Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
                 ),

@@ -35,6 +35,9 @@ class AppStrings {
   static const String myTasks = 'My Tasks';
   static const String noTasks = 'No tasks yet';
   static const String addTask = 'Add Task';
+  static const String searchHint = 'Search tasks by title';
+  static const String noSearchResults = 'Tidak ada tasks yang match dengan';
+  static const String tryAnotherKeyword = 'Coba kata kunci lain';
 
   // NEW: Priority Labels
   static const String priorityHigh = 'High';
